@@ -2,35 +2,13 @@
   "manifest_version": 3,
   "name": "Spam Detector",
   "version": "1.0",
-  "description": "Detects spam messages in Gmail and WhatsApp",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": [
-    "https://mail.google.com/*",
-    "https://web.whatsapp.com/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "description": "Detect spam in Gmail",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["http://localhost:8000/*"],
   "content_scripts": [
     {
-      "matches": ["https://mail.google.com/*", "https://web.whatsapp.com/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"]
     }
-  ],
-  "action": {
-    "default_popup": "popup/popup.html",
-    "default_title": "Spam Detector"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["tfjs_model/*"],
-      "matches": ["<all_urls>"]
-    }
-  ],
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
+  ]
 }
