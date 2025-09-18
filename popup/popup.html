@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 15px;
+      font-family: Arial, sans-serif;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .header img {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .active {
+      background-color: #e6f7ee;
+      color: #0c622e;
+    }
+    .inactive {
+      background-color: #fef3e8;
+      color: #b45f06;
+    }
+    .stats {
+      margin-top: 15px;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 10px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #3367d6;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="../icons/icon48.png" alt="Spam Detector Icon">
+    <h2>Spam Detector</h2>
+  </div>
+  
+  <div id="status" class="status inactive">Checking page compatibility...</div>
+  
+  <div class="stats">
+    <div class="stat-item">
+      <span>Messages scanned:</span>
+      <span id="scannedCount">0</span>
+    </div>
+    <div class="stat-item">
+      <span>Spam detected:</span>
+      <span id="spamCount">0</span>
+    </div>
+  </div>
+  
+  <button id="scanButton">Scan Now</button>
+  <button id="optionsButton">Options</button>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
