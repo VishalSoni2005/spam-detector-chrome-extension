@@ -25,10 +25,30 @@ class SMSRequest(BaseModel):
 def home():
     return {"message": "Welcome to the SMS Spam Classifier API 🚀"}
 
+# @app.post("/predict")
+# def predict(req: SMSRequest):
+#     # Predict using the pipeline
+#     prediction = model.predict([req.message])[0]
+#     label = "spam" if prediction == 1 else "ham"
+#     return {"input": req.message, "prediction": label}
+
 @app.post("/predict")
 def predict(req: SMSRequest):
-    # Predict using the pipeline
-    prediction = model.predict([req.message])[0]
-    label = "spam" if prediction == 1 else "ham"
-    return {"input": req.message, "prediction": label}
+    # Get probabilities
+    probs = model.predict_proba([req.message])[0]
+    spam_prob = float(probs[1])  # Probability of spam
+    ham_prob = float(probs[0])
 
+    prediction = "spam" if spam_prob > 0.5 else "ham"
+
+    return {
+        "input": req.message,
+        "prediction": prediction,
+        "confidence": round(max(spam_prob, ham_prob) * 100, 2),
+        "probabilities": {"ham": ham_prob, "spam": spam_prob},
+        "ui": {
+            "color": "red" if prediction == "spam" else "green",
+            "icon": "⚠️" if prediction == "spam" else "✅",
+            "tag": "Suspicious" if prediction == "spam" else "Safe"
+        }
+    }

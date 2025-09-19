@@ -1,44 +1,77 @@
-console.log("Spam extension loaded! 🚀");
-
-async function checkSpam(textElement) {
-  const message = textElement.innerText.trim();
-  if (!message) return;
-
+async function checkSpam(text) {
   try {
-    let res = await fetch("http://localhost:8000/predict", {
+    const response = await fetch("http://localhost:8000/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message: text }),
     });
+    const data = await response.json();
 
-    console.log("Doing the work till here call done");
-    
-    let data = await res.json();
-
-    if (data.prediction === "spam") {
-      textElement.style.border = "2px solid red";
-      textElement.style.backgroundColor = "rgba(255,0,0,0.1)";
-    } else {
-      textElement.style.border = "2px solid green";
-      textElement.style.backgroundColor = "rgba(0,255,0,0.05)";
+    // Highlight email in Gmail
+    const container = document.querySelector(".ii.gt"); // Gmail body container
+    if (container) {
+      container.style.border = `3px solid ${data.ui.color}`;
+      container.title = `Prediction: ${data.prediction} (${data.confidence}%)`;
     }
-  } catch (e) {
-    console.error("Prediction error:", e);
+  } catch (err) {
+    console.error("Prediction error:", err);
   }
 }
 
-// MutationObserver to catch dynamically loaded mails
+// Observe Gmail DOM changes
 const observer = new MutationObserver(() => {
-  let emailBodies = document.querySelectorAll("div.a3s.aiL");
-  emailBodies.forEach((body) => {
-    if (!body.dataset.checked) {
-      body.dataset.checked = "true";
-      checkSpam(body);
+  const emailBody = document.querySelector(".ii.gt");
+  if (emailBody) {
+    const text = emailBody.innerText;
+    if (text && text.length > 20) {
+      checkSpam(text);
     }
-  });
+  }
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
+
+// console.log("Spam extension loaded! 🚀");
+
+// async function checkSpam(textElement) {
+//   const message = textElement.innerText.trim();
+//   if (!message) return;
+
+//   try {
+//     let res = await fetch("http://localhost:8000/predict", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ message }),
+//     });
+
+//     console.log("Doing the work till here call done");
+
+//     let data = await res.json();
+
+//     if (data.prediction === "spam") {
+//       textElement.style.border = "2px solid red";
+//       textElement.style.backgroundColor = "rgba(255,0,0,0.1)";
+//     } else {
+//       textElement.style.border = "2px solid green";
+//       textElement.style.backgroundColor = "rgba(0,255,0,0.05)";
+//     }
+//   } catch (e) {
+//     console.error("Prediction error:", e);
+//   }
+// }
+
+// // MutationObserver to catch dynamically loaded mails
+// const observer = new MutationObserver(() => {
+//   let emailBodies = document.querySelectorAll("div.a3s.aiL");
+//   emailBodies.forEach((body) => {
+//     if (!body.dataset.checked) {
+//       body.dataset.checked = "true";
+//       checkSpam(body);
+//     }
+//   });
+// });
+
+// observer.observe(document.body, { childList: true, subtree: true });
 
 // // Content script to detect and process messages
 // (function () {
