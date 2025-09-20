@@ -1,54 +1,144 @@
+# app.py
+import os
+import logging
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
 
-# Load the saved pipeline (TF-IDF + model)
-model = joblib.load("./sms_spam_classifier.pkl")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Initialize FastAPI
+# MODEL_PATH = os.getenv("MODEL_PATH", "./sms_spam_classifier.pkl")
+MODEL_PATH = './sms_spam_classifier.pkl'
+try:
+    model = joblib.load(MODEL_PATH)
+    logger.info("Loaded model from %s", MODEL_PATH)
+except Exception as e:
+    logger.exception("Failed to load model:")
+    model = None
+
 app = FastAPI(title="SMS Spam Classifier API")
 
-# Allow Chrome Extension + Gmail to call API
+# DEV: using allow_origins=["*"] is fine for development.
+# PRODUCTION: restrict to your domain(s) and extension origin (e.g. "chrome-extension://<EXT_ID>")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # for dev, allow all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # allow all HTTP methods (GET, POST, OPTIONS, etc.)
-    allow_headers=["*"],  # allow all headers
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-# Define request body
+
+
 class SMSRequest(BaseModel):
     message: str
 
+
 @app.get("/")
-def home():
+async def home():
     return {"message": "Welcome to the SMS Spam Classifier API 🚀"}
+
+@app.post("/predict")
+async def predict(req: SMSRequest):
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not available")
+
+    text = req.message.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Empty message")
+
+    try:
+        # If model supports predict_proba, prefer that for a confidence score
+        if hasattr(model, "predict_proba"):
+            probs = model.predict_proba([text])[0]
+            ham_prob = float(probs[0])
+            spam_prob = float(probs[1])
+            prediction = "spam" if spam_prob > ham_prob else "ham"
+            confidence = max(ham_prob, spam_prob)
+        else:
+            # fallback: use predict and give 100% confidence (not ideal, but safe)
+            pred = model.predict([text])[0]
+            # if your original training used numeric labels (1/0), map accordingly
+            prediction = "spam" if pred == 1 or str(pred).lower() == "spam" else "ham"
+            confidence = 1.0
+            # make up probabilities sensibly
+            ham_prob = 1.0 - confidence if prediction == "spam" else confidence
+            spam_prob = confidence if prediction == "spam" else 1.0 - confidence
+
+        return {
+            "input": text,
+            "prediction": prediction,
+            "confidence": round(confidence * 100, 2),
+            "probabilities": {"ham": ham_prob, "spam": spam_prob},
+            "ui": {
+                "color": "red" if prediction == "spam" else "green",
+                "icon": "⚠️" if prediction == "spam" else "✅",
+                "tag": "Suspicious" if prediction == "spam" else "Safe",
+            },
+        }
+    except Exception as e:
+        logger.exception("Prediction failed")
+        raise HTTPException(status_code=500, detail="Prediction error")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+
+#! woking prototype
+# from fastapi.middleware.cors import CORSMiddleware
+# from fastapi import FastAPI
+# from pydantic import BaseModel
+# import joblib
+
+# # Load the saved pipeline (TF-IDF + model)
+# model = joblib.load("./sms_spam_classifier.pkl")
+
+# # Initialize FastAPI
+# app = FastAPI(title="SMS Spam Classifier API")
+
+# # Allow Chrome Extension + Gmail to call API
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],  # for dev, allow all origins
+#     allow_credentials=True,
+#     allow_methods=["*"],  # allow all HTTP methods (GET, POST, OPTIONS, etc.)
+#     allow_headers=["*"],  # allow all headers
+# )
+# # Define request body
+# class SMSRequest(BaseModel):
+#     message: str
+
+# @app.get("/")
+# def home():
+#     return {"message": "Welcome to the SMS Spam Classifier API 🚀"}
+
+# # @app.post("/predict")
+# # def predict(req: SMSRequest):
+# #     # Predict using the pipeline
+# #     prediction = model.predict([req.message])[0]
+# #     label = "spam" if prediction == 1 else "ham"
+# #     return {"input": req.message, "prediction": label}
 
 # @app.post("/predict")
 # def predict(req: SMSRequest):
-#     # Predict using the pipeline
-#     prediction = model.predict([req.message])[0]
-#     label = "spam" if prediction == 1 else "ham"
-#     return {"input": req.message, "prediction": label}
+#     # Get probabilities
+#     probs = model.predict_proba([req.message])[0]
+#     spam_prob = float(probs[1])  # Probability of spam
+#     ham_prob = float(probs[0])
 
-@app.post("/predict")
-def predict(req: SMSRequest):
-    # Get probabilities
-    probs = model.predict_proba([req.message])[0]
-    spam_prob = float(probs[1])  # Probability of spam
-    ham_prob = float(probs[0])
+#     prediction = "spam" if spam_prob > 0.5 else "ham"
 
-    prediction = "spam" if spam_prob > 0.5 else "ham"
-
-    return {
-        "input": req.message,
-        "prediction": prediction,
-        "confidence": round(max(spam_prob, ham_prob) * 100, 2),
-        "probabilities": {"ham": ham_prob, "spam": spam_prob},
-        "ui": {
-            "color": "red" if prediction == "spam" else "green",
-            "icon": "⚠️" if prediction == "spam" else "✅",
-            "tag": "Suspicious" if prediction == "spam" else "Safe"
-        }
-    }
+#     return {
+#         "input": req.message,
+#         "prediction": prediction,
+#         "confidence": round(max(spam_prob, ham_prob) * 100, 2),
+#         "probabilities": {"ham": ham_prob, "spam": spam_prob},
+#         "ui": {
+#             "color": "red" if prediction == "spam" else "green",
+#             "icon": "⚠️" if prediction == "spam" else "✅",
+#             "tag": "Suspicious" if prediction == "spam" else "Safe"
+#         }
+#     }

@@ -1,38 +1,120 @@
+// content.js → Extracts text/email/message from the webpage.
+
+// content.js
+// Dev: change this to your deployed URL (https://...) before publishing
+const API_URL = "http://localhost:8000/predict";
+
+let lastText = "";
+let debounceTimer = null;
+const DEBOUNCE_MS = 700;
+const REQUEST_TIMEOUT_MS = 5000;
+
 async function checkSpam(text) {
   try {
-    const response = await fetch("http://localhost:8000/predict", {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    const resp = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text }),
+      signal: controller.signal,
     });
-    const data = await response.json();
 
-    // Highlight email in Gmail
-    const container = document.querySelector(".ii.gt"); // Gmail body container
+    clearTimeout(timeout);
+
+    if (!resp.ok) {
+      console.warn("Spam API responded with status:", resp.status);
+      return;
+    }
+
+    const data = await resp.json();
+
+    // Try a couple of common Gmail selectors (fallbacks)
+    const container =
+      document.querySelector(".ii.gt") || document.querySelector("div.a3s");
     if (container) {
-      container.style.border = `3px solid ${data.ui.color}`;
+      // use outline instead of border to avoid layout shift
+      container.style.outline = `3px solid ${data.ui.color}`;
       container.title = `Prediction: ${data.prediction} (${data.confidence}%)`;
     }
+
+    // Update stats in background/service worker
+    try {
+      chrome.runtime.sendMessage({
+        type: "INCREMENT_STATS",
+        scanned: 1,
+        spam: data.prediction === "spam" ? 1 : 0,
+      });
+    } catch (e) {
+      console.warn("Unable to send stats message:", e);
+    }
   } catch (err) {
-    console.error("Prediction error:", err);
+    if (err.name === "AbortError") {
+      console.warn("Prediction request timed out");
+    } else {
+      console.error("Prediction error:", err);
+    }
   }
 }
 
-// Observe Gmail DOM changes
+// Observe Gmail DOM changes with debounce to avoid spammy requests
 const observer = new MutationObserver(() => {
-  const emailBody = document.querySelector(".ii.gt");
-  if (emailBody) {
-    const text = emailBody.innerText;
-    if (text && text.length > 20) {
-      checkSpam(text);
-    }
-  }
+  if (debounceTimer) clearTimeout(debounceTimer);
+
+  debounceTimer = setTimeout(() => {
+    const emailBody = document.querySelector(".ii.gt") || document.querySelector("div.a3s");
+    if (!emailBody) return;
+
+    const text = emailBody.innerText?.trim() || "";
+    if (text.length < 20) return; // skip tiny content
+    if (text === lastText) return; // avoid duplicates
+    lastText = text;
+
+    checkSpam(text);
+  }, DEBOUNCE_MS);
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
 
+
+//! 2nd working code
+// async function checkSpam(text) {
+//   try {
+//     const response = await fetch("http://localhost:8000/predict", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ message: text }),
+//     });
+//     const data = await response.json();
+
+//     // Highlight email in Gmail
+//     const container = document.querySelector(".ii.gt"); // Gmail body container
+//     if (container) {
+//       container.style.border = `3px solid ${data.ui.color}`;
+//       container.title = `Prediction: ${data.prediction} (${data.confidence}%)`;
+//     }
+//   } catch (err) {
+//     console.error("Prediction error:", err);
+//   }
+// }
+
+// // Observe Gmail DOM changes
+// const observer = new MutationObserver(() => {
+//   const emailBody = document.querySelector(".ii.gt");
+//   if (emailBody) {
+//     const text = emailBody.innerText;
+//     if (text && text.length > 20) {
+//       checkSpam(text);
+//     }
+//   }
+// });
+
+// observer.observe(document.body, { childList: true, subtree: true });
+
 // console.log("Spam extension loaded! 🚀");
 
+//! first working code
 // async function checkSpam(textElement) {
 //   const message = textElement.innerText.trim();
 //   if (!message) return;
