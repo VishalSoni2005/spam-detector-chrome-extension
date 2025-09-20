@@ -1,7 +1,5 @@
 // Background script to handle messages
 // background.js → Acts as a bridge, sends data to ML model.
-
-// background.js (MV3 service worker)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "GET_STATS") {
     chrome.storage.local.get(["messagesScanned", "spamDetected"], (result) => {
@@ -36,27 +34,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ messagesScanned: 0, spamDetected: 0 });
 });
-
-//!
-// chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-//   if (request.type === "GET_STATS") {
-//     chrome.storage.local.get(
-//       ["messagesScanned", "spamDetected"],
-//       function (result) {
-//         sendResponse({
-//           scanned: result.messagesScanned || 0,
-//           spam: result.spamDetected || 0,
-//         });
-//       }
-//     );
-//     return true; // Will respond asynchronously
-//   }
-// });
-
-// // Initialize storage
-// chrome.runtime.onInstalled.addListener(() => {
-//   chrome.storage.local.set({
-//     messagesScanned: 0,
-//     spamDetected: 0,
-//   });
-// });

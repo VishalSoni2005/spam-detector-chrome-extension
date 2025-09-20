@@ -22,32 +22,38 @@ This project is a Gmail spam detection tool built as a Chrome extension. It capt
 
 ## How It Works
 
-1. **User opens Gmail**  
+1. **User opens Gmail**
+
    - `content.js` injects scripts into Gmail's DOM.
 
-2. **Email text is captured**  
+2. **Email text is captured**
+
    - Extracts the body content using Gmail selectors (`.ii.gt`).
 
-3. **Send to ML backend**  
+3. **Send to ML backend**
+
    - Text is sent via `fetch()` to the FastAPI backend (`http://localhost:8000/predict`).
 
-4. **Backend processing (FastAPI + ML)**  
-   - Loads the trained model (`sms_spam_classifier.pkl`).  
-   - Vectorizes text using TF-IDF.  
-   - Logistic Regression predicts spam or ham.  
+4. **Backend processing (FastAPI + ML)**
+
+   - Loads the trained model (`sms_spam_classifier.pkl`).
+   - Vectorizes text using TF-IDF.
+   - Logistic Regression predicts spam or ham.
    - Returns JSON response with prediction, probability, and UI hints (icon, color, tag).
 
-5. **Update Gmail UI**  
+5. **Update Gmail UI**
+
    - `content.js` adds border colors: red for spam, green for safe emails.
 
-6. **Popup interface (`popup.js`)**  
+6. **Popup interface (`popup.js`)**
+
    - Users can select text, send it to the backend, and view results with confidence score and icon.
 
-7. **Background script (`background.js`)**  
+7. **Background script (`background.js`)**
+
    - Manages extension state, such as scanned emails and spam count.
 
-8. **Manifest (`manifest.json`)**  
+8. **Manifest (`manifest.json`)**
    - Defines the Chrome extension structure, permissions, and script connections.
 
 ---
-
